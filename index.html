@@ -1,0 +1,65 @@
+import streamlit as st
+import pandas as pd
+
+# Page setup
+st.set_page_config(page_title="Monthly Spending Tracker", layout="wide")
+st.title("📊 Monthly Spending Tracker")
+
+# Initialize session state
+if "data" not in st.session_state:
+    st.session_state.data = pd.DataFrame(columns=[
+        "Month", "Category", "Description", "Budgeted Amount",
+        "Actual Spent", "Difference", "Notes"
+    ])
+
+# Sidebar: Add new expense
+st.sidebar.header("➕ Add New Expense")
+month = st.sidebar.selectbox("Month", [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+])
+category = st.sidebar.selectbox("Category", [
+    "Rent", "Food", "Fun", "Utilities", "Transport", "Other"
+])
+description = st.sidebar.text_input("Description")
+budgeted = st.sidebar.number_input("Budgeted Amount", min_value=0.0, step=10.0)
+actual = st.sidebar.number_input("Actual Spent", min_value=0.0, step=10.0)
+notes = st.sidebar.text_input("Notes")
+
+if st.sidebar.button("Add Expense"):
+    new_entry = {
+        "Month": month,
+        "Category": category,
+        "Description": description,
+        "Budgeted Amount": budgeted,
+        "Actual Spent": actual,
+        "Difference": budgeted - actual,
+        "Notes": notes
+    }
+    st.session_state.data = pd.concat(
+        [st.session_state.data, pd.DataFrame([new_entry])],
+        ignore_index=True
+    )
+
+# Main view: Select month to display
+if not st.session_state.data.empty:
+    selected_month = st.selectbox("📅 View Month", sorted(st.session_state.data["Month"].unique()))
+    filtered_df = st.session_state.data[st.session_state.data["Month"] == selected_month]
+
+    st.subheader(f"Spending Summary for {selected_month}")
+    st.dataframe(filtered_df, use_container_width=True)
+
+    # Totals
+    total_budget = filtered_df["Budgeted Amount"].sum()
+    total_actual = filtered_df["Actual Spent"].sum()
+    total_diff = total_budget - total_actual
+
+    st.markdown(f"**💰 Total Budgeted:** ${total_budget:,.2f}")
+    st.markdown(f"**🧾 Total Spent:** ${total_actual:,.2f}")
+    st.markdown(f"**📈 Remaining:** ${total_diff:,.2f}")
+
+    # Chart
+    chart_data = filtered_df.groupby("Category")[["Budgeted Amount", "Actual Spent"]].sum()
+    st.bar_chart(chart_data)
+else:
+    st.info("No expenses added yet. Use the sidebar to begin tracking.")
